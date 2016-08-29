@@ -1,0 +1,9 @@
+---
+- hosts: test
+  remote_user: root
+
+  vars:
+    - git_app_service_type: "simple"
+
+  roles:
+    - ansible-git-app

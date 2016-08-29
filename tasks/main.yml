@@ -1,0 +1,63 @@
+---
+# tasks file for ansible-git-app
+  - name: Ensure git_app service group exists
+    group:
+      name: "{{ git_app_group_name }}"
+      gid: "{{ git_app_group_id }}"
+      state: present
+
+  - name: Ensure git_app service user exists
+    user:
+      name: "{{ git_app_user_name }}"
+      uid: "{{ git_app_user_id }}"
+      group: "{{ git_app_group_name }}"
+      home: "{{ git_app_user_home }}"
+      system: true
+      state: present
+
+  - name: Ensure git-app-role dependencies are installed
+    package: name={{ git_app_role_dependencies }} state=present
+
+  - name: Ensure git_app dependencies are installed
+    package: name={{ git_app_dependencies }} state=present
+
+  - name: Ensure git_app config directory exists
+    file:
+      dest: "{{ git_app_conf_path }}"
+      owner: "{{ git_app_user_name }}"
+      group: "{{ git_app_group_name }}"
+      recurse: true
+      state: directory
+
+  - name: Ensure git_app code path exists
+    file:
+      dest: "{{ git_app_code_path }}"
+      owner: "{{ git_app_user_name }}"
+      group: "{{ git_app_group_name }}"
+      recurse: true
+      state: directory
+
+  - name: Fetch git_app source code
+    git:
+      repo: "{{ git_app_clone_uri }}"
+      dest: "{{ git_app_code_path }}"
+      update: false
+      accept_hostkey: true
+    become: true
+    become_user: "{{ git_app_user_name }}"
+
+  - name: Deploy git_app service manifest
+    template:
+      src: "{{ git_app_service_file.src }}"
+      dest: "{{ git_app_service_file.dest }}"
+      owner: root
+      group: root
+      mode: 0600
+    notify:
+      - Reload service config
+      - Restart service
+
+  - name: Set git_app service to enabled
+    service:
+      name: "{{ git_app_name }}"
+      enabled: yes

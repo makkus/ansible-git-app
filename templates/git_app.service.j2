@@ -1,0 +1,14 @@
+[Unit]
+Description={{ git_app_name }} service
+After={{ git_app_systemd_after }}
+
+[Service]
+WorkingDirectory={{ git_app_user_home }}
+ExecStart={{ git_app_code_path }}/{{ git_app_exec_path }} {{ git_app_exec_arguments | default("") }}
+GuessMainPID=no
+Type={{ git_app_service_type }}
+User={{ git_app_user_name }}
+Group={{ git_app_group_name }}
+
+[Install]
+WantedBy={{ git_app_systemd_wantedby }}
