@@ -3,36 +3,62 @@ ansible-git-app
 
 A role to install applications from git, add a init script and ensure it's running.
 
-Requirements
-------------
-
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
-
 Role Variables
 --------------
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+````---
+# defaults file for ansible-git-app
 
-Dependencies
-------------
+# the name of the app
+git_app_name: dummy-git-app
+# the username to own and run the app
+git_app_user_name: makkus
+# the id of the user to own and run the app
+git_app_user_id: 4999
+# the groupname to own and run the app
+git_app_group_name: makkus
+# the id of the group to own and run the app
+git_app_group_id: 4999
+# the home directory of the user
+git_app_user_home: "/home/{{ git_app_user_name }}"
+# the git clone uri
+git_app_clone_uri: 'https://github.com/makkus/dummy-git-app.git'
+# the folder where the configuration of the app is stored (optional)
+# will be created and chown'ed to user if it doesn't exist
+git_app_conf_path: "{{ git_app_user_home }}/.dummy_app"
+# the path where to checkout the code
+git_app_code_path: "/opt/{{ git_app_name }}"
+# the executable to run, relative to git_app_code_path
+git_app_exec_path: "print_time.sh"
+# arguments, if any
+# git_app_exec_arguments:
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+# package names of dependencies to be installed
+git_app_dependencies: []
+
+git_app_service_type: "simple"
+
+# misc TODO
+git_app_systemd_after: "network.target"
+git_app_systemd_wantedby: "multi-user.target"
+````
+
 
 Example Playbook
 ----------------
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
+```---
+- hosts: test
+  remote_user: root
 
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
+  vars:
+    - git_app_service_type: "simple"
+
+  roles:
+    - ansible-git-app
+```
 
 License
 -------
 
 BSD
-
-Author Information
-------------------
-
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
