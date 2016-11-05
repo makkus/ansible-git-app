@@ -1,0 +1,12 @@
+[Unit]
+Description={{ item.app_name }} service
+After={{ item.systemd_after | default("multi-user.target") }}
+
+[Service]
+ExecStart={{ item.exec_path }} {{ item.exec_arguments | default("") }}
+GuessMainPID=no
+Type={{ item.service_type | default("simple") }}
+User={{ item.app_name }}
+
+[Install]
+WantedBy={{ item.sytemd_wantedby | default("multi-user.target") }}

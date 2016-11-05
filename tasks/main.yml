@@ -1,63 +1,165 @@
 ---
 # tasks file for ansible-git-app
+  - name: adds (optional) apt repositories
+    apt_repository: repo="{{ item }}" state=present
+    with_items:
+      - "{{ additional_repos | default([]) }}"
+
+
   - name: Ensure git_app service group exists
     group:
-      name: "{{ git_app_group_name }}"
-      gid: "{{ git_app_group_id }}"
+      name: "{{ item.user_group_name }}"
+      gid: "{{ item.user_group_id | default(omit) }}"
       state: present
+    with_items:
+      - "{{ git_apps }}"
+    when: item.user_group_name is defined
+
+  - name: Ensure git_app user home parent dir exists
+    file:
+      dest: "{{ item.user_home | dirname }}"
+      recurse: true
+      state: directory
+    with_items:
+      - "{{ git_apps }}"
+    when:
+      - item.user_home is defined
 
   - name: Ensure git_app service user exists
     user:
-      name: "{{ git_app_user_name }}"
-      uid: "{{ git_app_user_id }}"
-      group: "{{ git_app_group_name }}"
-      home: "{{ git_app_user_home }}"
+      name: "{{ item.user_name }}"
+      uid: "{{ item.user_id | default(omit)}}"
+      group: "{{ item.user_group_name | default(omit) }}"
+      home: "{{ item.user_home | default(omit) }}"
       system: true
       state: present
+    with_items:
+      - "{{ git_apps }}"
+    when: item.user_name is defined
+
+  - name: Ensure git_app service user exists (user git_app name)
+    user:
+      name: "{{ item.app_name }}"
+      uid: "{{ item.user_id | default(omit) }}"
+      group: "{{ item.user_group_name | default(omit) }}"
+      home: "{{ item.user_home | default(omit) }}"
+      system: true
+      state: present
+    with_items:
+      - "{{ git_apps }}"
+    when: item.user_name is not defined
 
   - name: Ensure git-app-role dependencies are installed
     package: name={{ git_app_role_dependencies }} state=present
 
   - name: Ensure git_app dependencies are installed
-    package: name={{ git_app_dependencies }} state=present
+    package: name={{ item.app_dependencies | default([]) }} state=present
+    with_items:
+      - "{{ git_apps }}"
 
   - name: Ensure git_app config directory exists
     file:
-      dest: "{{ git_app_conf_path }}"
-      owner: "{{ git_app_user_name }}"
-      group: "{{ git_app_group_name }}"
+      dest: "{{ item.conf_path }}"
+      owner: "{{ item.user_name }}"
+      group: "{{ item.group_name | default(omit) }}"
       recurse: true
       state: directory
+    with_items:
+      - "{{ git_apps }}"
+    when:
+      - item.conf_path is defined
+      - item.user_name is defined
+
+  - name: Ensure git_app config directory exists ( without user name specified )
+    file:
+      dest: "{{ item.conf_path }}"
+      owner: "{{ item.app_name }}"
+      group: "{{ item.group_name | default(omit) }}"
+      recurse: true
+      state: directory
+    with_items:
+      - "{{ git_apps }}"
+    when:
+      - item.conf_path is defined
+      - item.user_name is not defined
 
   - name: Ensure git_app code path exists
     file:
-      dest: "{{ git_app_code_path }}"
-      owner: "{{ git_app_user_name }}"
-      group: "{{ git_app_group_name }}"
+      dest: "/opt/{{ item.app_name }}"
+      owner: "{{ item.user_name }}"
+      group: "{{ item.group_name | default(omit) }}"
       recurse: true
       state: directory
+    with_items:
+      - "{{ git_apps }}"
+    when: item.user_name is defined
+
+  - name: Ensure git_app code path exists ( user_name is not defined )
+    file:
+      dest: "/opt/{{ item.app_name }}"
+      owner: "{{ item.app_name }}"
+      group: "{{ item.group_name | default(omit) }}"
+      recurse: true
+      state: directory
+    with_items:
+      - "{{ git_apps }}"
+    when: item.user_name is not defined
 
   - name: Fetch git_app source code
     git:
-      repo: "{{ git_app_clone_uri }}"
-      dest: "{{ git_app_code_path }}"
-      update: false
+      repo: "{{ item.app_clone_uri }}"
+      dest: "/opt/{{ item.app_name }}"
+      version: "{{ item.version | default(master) }}"
+      update: yes
       accept_hostkey: true
     become: true
-    become_user: "{{ git_app_user_name }}"
+    become_user: "{{ item.user_name }}"
+    with_items:
+      - "{{ git_apps }}"
+    when: item.user_name is defined
+
+  - name: Fetch git_app source code (user_name not defined )
+    git:
+      repo: "{{ item.app_clone_uri }}"
+      dest: "/opt/{{ item.app_name }}"
+      update: yes
+      accept_hostkey: true
+    become: true
+    become_user: "{{ item.app_name }}"
+    with_items:
+      - "{{ git_apps }}"
+    when: item.user_name is not defined
 
   - name: Deploy git_app service manifest
     template:
-      src: "{{ git_app_service_file.src }}"
-      dest: "{{ git_app_service_file.dest }}"
+      src: git_app_user_name.service.j2
+      dest: "/etc/systemd/system/{{ item.app_name }}.service"
       owner: root
       group: root
       mode: 0600
     notify:
       - Reload service config
-      - Restart service
+    with_items:
+      - "{{ git_apps }}"
+    when: item.user_name is defined
+
+  - name: Deploy git_app service manifest
+    template:
+      src: git_app_non_user_name.service.j2
+      dest: "/etc/systemd/system/{{ item.app_name }}.service"
+      owner: root
+      group: root
+      mode: 0600
+    notify:
+      - Reload service config
+    with_items:
+      - "{{ git_apps }}"
+    when: item.user_name is not defined
 
   - name: Set git_app service to enabled
     service:
-      name: "{{ git_app_name }}"
+      name: "{{ item.app_name }}"
+      state: restarted
       enabled: yes
+    with_items:
+      - "{{ git_apps }}"

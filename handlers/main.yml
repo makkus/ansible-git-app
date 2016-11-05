@@ -1,8 +1,5 @@
 ---
 # handlers file for ansible-git-app
 
-  - name: Restart service
-    service: name={{ git_app_name }} state=restarted
-
   - name: Reload service config
     command: "systemctl daemon-reload"

@@ -5,6 +5,3 @@ git_app_role_dependencies:
   - git-core
   - ca-certificates
 
-git_app_service_file:
-  src: git_app.service.j2
-  dest: /etc/systemd/system/{{ git_app_name }}.service

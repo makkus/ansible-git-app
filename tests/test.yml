@@ -2,8 +2,8 @@
 - hosts: test
   remote_user: root
 
-  vars:
-    - git_app_service_type: "simple"
+  vars_files:
+    - couchpotato.yml
 
   roles:
-    - ansible-git-app
+    - { role: ansible-git-app }
